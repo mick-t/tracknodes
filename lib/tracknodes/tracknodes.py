@@ -88,7 +88,7 @@ class TrackNodes:
         self.detect_resourcemanager()
 
         if self.verbose:
-            print("cmd: %s" % self.nodes_cmd)
+            print(("cmd: %s" % self.nodes_cmd))
 
     def connect_db(self):
         if self.dbfile is None:
@@ -99,7 +99,7 @@ class TrackNodes:
         else:
             firstrun = False
         if self.verbose:
-            print("dbfile: %s" % self.dbfile)
+            print(("dbfile: %s" % self.dbfile))
 
         self.con = lite.connect(self.dbfile)
 
@@ -124,7 +124,7 @@ class TrackNodes:
             raise Exception("Unable to determine resource manager for nodes_cmd: %s, binary: %s" % (self.nodes_cmd, nodes_cmd_base))
 
         if self.verbose:
-            print("Resource Manager Detected as %s" % self.resourcemanager)
+            print(("Resource Manager Detected as %s" % self.resourcemanager))
 
     def online_nodes(self):
         """
@@ -166,7 +166,6 @@ class TrackNodes:
                 if node_record[0] == nodename and not node_record[2] == comment:
                     self.cur.execute("UPDATE CurrentFailedNodes SET State=?,Comment=? WHERE Name=?", (state, comment, nodename))
                     self.cur.execute("INSERT INTO NodeStates VALUES(?, ?, ?, datetime('now'))", (nodename, state, comment))
-                    self.con.commit()
 
     def detect_pbspro(self):
         """
@@ -216,7 +215,7 @@ class TrackNodes:
                 self.current_failed.append((fields[0], TrackNodes.encode_state(fields[1]), ' '.join(fields[2::])))
             else:
                 if self.verbose:
-                    print("Parse Error on line: '%s'" % line)
+                    print(("Parse Error on line: '%s'" % line))
 
     def parse_sinfo_cmd(self):
         """
@@ -239,7 +238,7 @@ class TrackNodes:
                 self.current_failed.append((nodename, TrackNodes.encode_state('down'), reason))
             else:
                 if self.verbose:
-                    print("Parse Error on line: '%s'" % line)
+                    print(("Parse Error on line: '%s'" % line))
 
             line_num += 1
 
@@ -338,7 +337,7 @@ class TrackNodes:
             self.cur.execute("SELECT * FROM NodeStates ORDER BY datetime(Time) DESC")
             rows = self.cur.fetchall()
             for row in rows:
-                print("%s | %s | %s | '%s'" % (row[0], row[3], TrackNodes.decode_state(row[1]), row[2]))
+                print(("%s | %s | %s | '%s'" % (row[0], row[3], TrackNodes.decode_state(row[1]), row[2])))
             print("")
         except IOError as e:
             if e.errno == errno.EPIPE:
