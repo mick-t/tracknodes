@@ -57,7 +57,7 @@ class TrackNodes:
         for configfile in configs:
             if os.path.isfile(configfile):
                 with open(configfile, 'r') as f:
-                    tracknodes_conf = yaml.load(f)
+                    tracknodes_conf = yaml.full_load(f)
                     if tracknodes_conf is not None:
                         if "dbfile" in tracknodes_conf:
                             if self.dbfile is None:
