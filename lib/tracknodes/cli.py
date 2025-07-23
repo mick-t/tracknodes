@@ -1,6 +1,6 @@
 """ Command Line Interface Module """
 
-from tracknodes import TrackNodes
+from .tracknodes import TrackNodes
 
 
 class Cli(object):
