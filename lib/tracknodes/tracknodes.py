@@ -1,16 +1,18 @@
 """ TrackNodes Module """
 
 import sqlite3 as lite
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, run
 import errno
 import re
 import optparse
 import os
+import shlex
 import yaml
 
 
 class TrackNodes:
     """ TrackNodes Interface """
+
     def __init__(self, update=False, dbfile=None, nodes_cmd=None, verbose=False):
         """
         Create initial sqlite database and initialize connection
@@ -71,8 +73,10 @@ class TrackNodes:
         Search for nodes command.
         """
         # Look for pbsnodes as option, in PATH, then specific locations
-        nodecmd_torque_search_cmds = ["pbsnodes", "/usr/bin/pbsnodes", "/bin/pbsnodes", "/usr/local/bin/pbsnodes"]
-        nodecmd_slurm_search_cmds = ["sinfo", "/usr/bin/sinfo", "/bin/sinfo", "/usr/local/bin/sinfo"]
+        nodecmd_torque_search_cmds = [
+            "pbsnodes", "/usr/bin/pbsnodes", "/bin/pbsnodes", "/usr/local/bin/pbsnodes"]
+        nodecmd_slurm_search_cmds = [
+            "sinfo", "/usr/bin/sinfo", "/bin/sinfo", "/usr/local/bin/sinfo"]
         nodecmd_search_cmds = nodecmd_torque_search_cmds + nodecmd_slurm_search_cmds
         found_node_cmd = True
         if self.nodes_cmd is None:
@@ -106,9 +110,11 @@ class TrackNodes:
         with self.con:
             self.cur = self.con.cursor()
             if (True == firstrun):
-                self.cur.execute("CREATE TABLE CurrentFailedNodes(Name TEXT, State INT, Comment TEXT)")
+                self.cur.execute(
+                    "CREATE TABLE CurrentFailedNodes(Name TEXT, State INT, Comment TEXT)")
                 # Use ISO8601 for storing time
-                self.cur.execute("CREATE TABLE NodeStates(Name TEXT, State INT, Comment TEXT, Time TEXT)")
+                self.cur.execute(
+                    "CREATE TABLE NodeStates(Name TEXT, State INT, Comment TEXT, Time TEXT)")
                 self.con.commit()
 
     def detect_resourcemanager(self):
@@ -121,7 +127,8 @@ class TrackNodes:
             else:
                 self.resourcemanager = "torque"
         else:
-            raise Exception("Unable to determine resource manager for nodes_cmd: %s, binary: %s" % (self.nodes_cmd, nodes_cmd_base))
+            raise Exception("Unable to determine resource manager for nodes_cmd: %s, binary: %s" % (
+                self.nodes_cmd, nodes_cmd_base))
 
         if self.verbose:
             print(("Resource Manager Detected as %s" % self.resourcemanager))
@@ -146,8 +153,10 @@ class TrackNodes:
                 onlinenodes.append(lx)
 
         for node in onlinenodes:
-            self.cur.execute("INSERT INTO NodeStates VALUES(?, ?, ?, datetime('now'))", (node[0], 0, ''))
-            self.cur.execute("DELETE FROM CurrentFailedNodes WHERE Name LIKE ?", (node[0],))
+            self.cur.execute(
+                "INSERT INTO NodeStates VALUES(?, ?, ?, datetime('now'))", (node[0], 0, ''))
+            self.cur.execute(
+                "DELETE FROM CurrentFailedNodes WHERE Name LIKE ?", (node[0],))
             self.con.commit()
 
     def fail_nodes(self):
@@ -155,23 +164,29 @@ class TrackNodes:
         Mark nodes as failed
         """
         for (nodename, state, comment) in self.current_failed:
-            self.cur.execute("SELECT Name,State,Comment FROM CurrentFailedNodes WHERE Name LIKE ?", (nodename,))
+            self.cur.execute(
+                "SELECT Name,State,Comment FROM CurrentFailedNodes WHERE Name LIKE ?", (nodename,))
             node_record = self.cur.fetchone()
             if (None == node_record):
-                self.cur.execute("INSERT INTO CurrentFailedNodes VALUES(?, ?, ?)", (nodename, state, comment))
-                self.cur.execute("INSERT INTO NodeStates VALUES(?, ?, ?, datetime('now'))", (nodename, state, comment))
+                self.cur.execute(
+                    "INSERT INTO CurrentFailedNodes VALUES(?, ?, ?)", (nodename, state, comment))
+                self.cur.execute(
+                    "INSERT INTO NodeStates VALUES(?, ?, ?, datetime('now'))", (nodename, state, comment))
                 self.con.commit()
             else:
                 # Also record historical state and comment changes
                 if node_record[0] == nodename and not node_record[2] == comment:
-                    self.cur.execute("UPDATE CurrentFailedNodes SET State=?,Comment=? WHERE Name=?", (state, comment, nodename))
-                    self.cur.execute("INSERT INTO NodeStates VALUES(?, ?, ?, datetime('now'))", (nodename, state, comment))
+                    self.cur.execute(
+                        "UPDATE CurrentFailedNodes SET State=?,Comment=? WHERE Name=?", (state, comment, nodename))
+                    self.cur.execute(
+                        "INSERT INTO NodeStates VALUES(?, ?, ?, datetime('now'))", (nodename, state, comment))
 
     def detect_pbspro(self):
         """
         Detect if its PBSpro vs Torque
         """
-        pbsnodes_stdout, pbsnodes_stderr = Popen([self.nodes_cmd, '--version'], stdout=PIPE, stderr=PIPE).communicate()
+        pbsnodes_stdout, pbsnodes_stderr = Popen(
+            [self.nodes_cmd, '--version'], stdout=PIPE, stderr=PIPE).communicate()
         for pbsnodes_out in [pbsnodes_stdout, pbsnodes_stderr]:
             for line in pbsnodes_out.strip().split("\n"):
                 fields = line.split()
@@ -201,7 +216,8 @@ class TrackNodes:
         elif self.resourcemanager == "slurm":
             self.parse_sinfo_cmd()
         else:
-            raise Exception("Unable to parse nodes_cmd: %s, unsupported resource manager: %s" % (self.nodes_cmd, self.resourcemanager))
+            raise Exception("Unable to parse nodes_cmd: %s, unsupported resource manager: %s" % (
+                self.nodes_cmd, self.resourcemanager))
 
     def parse_pbsnodes_cmd(self, cmd_args):
         """
@@ -210,37 +226,46 @@ class TrackNodes:
         for line in Popen([self.nodes_cmd, cmd_args], stdout=PIPE, stderr=PIPE).communicate()[0].rstrip().split("\n"):
             fields = line.split()
             if len(fields) == 2:
-                self.current_failed.append((fields[0], TrackNodes.encode_state(fields[1]), ''))
+                self.current_failed.append(
+                    (fields[0], TrackNodes.encode_state(fields[1]), ''))
             elif len(fields) >= 3:
-                self.current_failed.append((fields[0], TrackNodes.encode_state(fields[1]), ' '.join(fields[2::])))
+                self.current_failed.append(
+                    (fields[0], TrackNodes.encode_state(fields[1]), ' '.join(fields[2::])))
             else:
                 if self.verbose:
                     print(("Parse Error on line: '%s'" % line))
+
+
 
     def parse_sinfo_cmd(self):
         """
-        Run sinfo -dR (slurm) and parse the output and return an array of tuples [(nodename, state, comment),]
+        Parse `sinfo -dR -h` (no header) and split columns safely.
         """
-        line_num = 0
-        for line in Popen([self.nodes_cmd, '-dR'], stdout=PIPE, stderr=PIPE).communicate()[0].rstrip().split("\n"):
-            # Skip First Line
-            if line_num == 0:
-                line_num += 1
+        argv = [self.nodes_cmd, '-dR', '-h']  # -h removes the header line
+
+        res = run(argv, stdout=PIPE, stderr=PIPE, text=True, encoding='utf-8')
+        if res.returncode != 0:
+            if self.verbose:
+                print(f"sinfo failed: {' '.join(map(shlex.quote, argv))}\nstderr: {res.stderr}")
+            return
+
+        for raw in res.stdout.splitlines():
+            # Collapse runs of whitespace and split into 4 fields: REASON USER TIMESTAMP NODELIST
+            parts = raw.strip().split()
+            if len(parts) < 4:
+                if self.verbose:
+                    print(f"Parse Error on line: '{raw}'")
                 continue
 
-            m = re.search(r'^(.*?)\s+([a-zA-Z0-9\-_]+)\s+([0-9\-:T]+)\s+([a-zA-Z0-9_\-]+)$', line)
-            if m:
-                reason = m.group(1)
-                username = m.group(2)
-                timestamp = m.group(3)
-                nodename = m.group(4)
-                # -dR returns only down nodes, so the state is down
-                self.current_failed.append((nodename, TrackNodes.encode_state('down'), reason))
-            else:
-                if self.verbose:
-                    print(("Parse Error on line: '%s'" % line))
+            # REASON can itself contain spaces, so reconstruct it:
+            # everything except the last 3 tokens is REASON
+            reason   = ' '.join(parts[:-3])
+            # username = parts[-3]
+            # timestamp = parts[-2]
+            nodelist = parts[-1]
 
-            line_num += 1
+            self.current_failed.append((nodelist, TrackNodes.encode_state('down'), reason))
+
 
     @staticmethod
     def which(program):
@@ -334,10 +359,12 @@ class TrackNodes:
         try:
             print("History of Nodes")
             print("=========")
-            self.cur.execute("SELECT * FROM NodeStates ORDER BY datetime(Time) DESC")
+            self.cur.execute(
+                "SELECT * FROM NodeStates ORDER BY datetime(Time) DESC")
             rows = self.cur.fetchall()
             for row in rows:
-                print(("%s | %s | %s | '%s'" % (row[0], row[3], TrackNodes.decode_state(row[1]), row[2])))
+                print(("%s | %s | %s | '%s'" %
+                      (row[0], row[3], TrackNodes.decode_state(row[1]), row[2])))
             print("")
         except IOError as e:
             if e.errno == errno.EPIPE:
