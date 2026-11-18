@@ -16,14 +16,16 @@ Installation
 ===========
 
 ```shell
-$ pip install tracknodes
+$  pip install tracknodes@git+https://github.com/mick-t/tracknodes.git
 ```
 
 or
 
 ```shell
-$ easy_install tracknodes
+$ easy_install git+https://github.com/mick-t/tracknodes.git
 ```
+
+`pip install tracknodes` will install the original author's version which is not python3 compatible. 
 
 Usage
 ===========
